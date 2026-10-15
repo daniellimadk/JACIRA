@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIX AÇAÍTERIA - Sistema de Gerenciamento Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        acai: {
+                            50: '#faf5ff',
+                            100: '#f3e8ff',
+                            200: '#e9d5ff',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7e22ce',
+                            800: '#6b21a8',
+                            900: '#4c1d95',
+                            950: '#2e1065',
+                        },
+                        vibrant: {
+                            pink: '#ec4899',
+                            purple: '#8b5cf6',
+                            accent: '#f43f5e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #c084fc; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9333ea; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area *, #printable-session-voucher, #printable-session-voucher * { visibility: visible; }
+            #printable-area, #printable-session-voucher { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex h-screen overflow-hidden">
+
+    <!-- CUSTOM TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- CUSTOM CONFIRMATION MODAL -->
+    <div id="custom-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-100 text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="modal-title" class="font-extrabold text-lg text-slate-800">Confirmação</h3>
+            <p id="modal-msg" class="text-xs text-slate-500 leading-relaxed">Você tem certeza que deseja realizar esta ação?</p>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeModal(false)" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition">Cancelar</button>
+                <button id="modal-confirm-btn" onclick="closeModal(true)" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN AUTHORIZATION MODAL FOR RESTRICTED ACTIONS -->
+    <div id="admin-auth-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-100 text-center">
+            <div class="w-12 h-12 bg-purple-100 text-acai-700 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h3 id="auth-modal-title" class="font-extrabold text-lg text-slate-800">Autorização do ADM</h3>
+                <p id="auth-modal-desc" class="text-xs text-slate-500 mt-1">Informe a senha master do ADM para liberar esta alteração.</p>
+            </div>
+            <div>
+                <input type="password" id="auth-admin-password" placeholder="Senha do ADM..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500 text-center font-bold">
+                <p id="auth-modal-error" class="hidden text-xs text-rose-600 font-bold mt-1.5">Senha incorreta ou sem privilégios!</p>
+            </div>
+            <div class="flex space-x-3 pt-1">
+                <button onclick="closeAdminAuthModal(false)" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition">Cancelar</button>
+                <button onclick="submitAdminAuth()" class="flex-1 py-2.5 rounded-xl bg-acai-700 hover:bg-acai-800 text-white font-bold text-xs shadow-md transition">Autorizar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OPEN CASH REGISTER MODAL -->
+    <div id="open-cash-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-slate-100">
+            <div class="flex items-center space-x-3 border-b pb-4">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-door-open"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-lg text-slate-800">Abertura de Caixa</h3>
+                    <p class="text-xs text-slate-500">Informe o fundo de troco inicial para abrir o turno.</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-1">
+                    <p><span class="font-bold">Operador/Vendedor:</span> <span id="open-cash-user-name" class="text-acai-800 font-bold"></span></p>
+                    <p><span class="font-bold">Data / Hora:</span> <span id="open-cash-datetime" class="font-semibold text-slate-700"></span></p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Valor Inicial em Caixa (Fundo de Troco R$)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3.5 text-slate-400 font-bold text-sm">R$</span>
+                        <input type="number" id="open-cash-initial-amount" step="0.01" value="50.00" placeholder="0.00" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-lg font-bold text-slate-800">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Observações de Abertura (Opcional)</label>
+                    <textarea id="open-cash-notes" rows="2" placeholder="Ex: Troco inicial em notas de 5 e 10..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-xs font-medium"></textarea>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 pt-2">
+                <button onclick="toggleOpenCashModal(false)" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition">Cancelar</button>
+                <button onclick="confirmOpenCash()" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition">Confirmar Abertura</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLOSE CASH REGISTER MODAL -->
+    <div id="close-cash-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-5 border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center space-x-3 border-b pb-4">
+                <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-door-closed"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-lg text-slate-800">Fechamento de Caixa</h3>
+                    <p class="text-xs text-slate-500">Confira os totais e encerre a sessão do caixa atual.</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                        <span class="text-slate-400 uppercase font-semibold block">Aberto Por</span>
+                        <span id="close-cash-opened-by" class="font-bold text-slate-800"></span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                        <span class="text-slate-400 uppercase font-semibold block">Fechado Por</span>
+                        <span id="close-cash-closed-by" class="font-bold text-slate-800"></span>
+                    </div>
+                </div>
+
+                <!-- CASH SUMMARY BREAKDOWN -->
+                <div class="bg-acai-50/50 border border-acai-200 p-4 rounded-2xl space-y-2 text-xs">
+                    <div class="flex justify-between text-slate-600">
+                        <span>Fundo de Troco Inicial:</span>
+                        <span id="close-cash-initial" class="font-bold text-slate-800">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>Vendas em Dinheiro:</span>
+                        <span id="close-cash-sales-cash" class="font-bold text-amber-700">+ R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>Vendas em Pix:</span>
+                        <span id="close-cash-sales-pix" class="font-bold text-emerald-700">+ R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>Vendas em Cartão:</span>
+                        <span id="close-cash-sales-card" class="font-bold text-blue-700">+ R$ 0,00</span>
+                    </div>
+                    <div class="border-t border-acai-200/80 pt-2 flex justify-between font-extrabold text-slate-900 text-sm">
+                        <span>Faturamento Bruto em Vendas:</span>
+                        <span id="close-cash-total-sales" class="text-acai-800">R$ 0,00</span>
+                    </div>
+                    <div class="border-t border-acai-200/80 pt-2 flex justify-between font-black text-slate-900 text-sm">
+                        <span>Total Físico Esperado em Gaveta (Troco + Dinheiro):</span>
+                        <span id="close-cash-expected-drawer" class="text-emerald-700">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Valor Físico Contado na Gaveta (R$)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3.5 text-slate-400 font-bold text-sm">R$</span>
+                        <input type="number" id="close-cash-counted-cash" step="0.01" oninput="calculateCashDifference()" placeholder="0.00" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-lg font-bold text-slate-800">
+                    </div>
+                </div>
+
+                <div id="close-cash-diff-banner" class="hidden p-3 rounded-xl text-xs font-bold flex items-center justify-between border">
+                    <span id="close-cash-diff-label">Diferença / Sangria:</span>
+                    <span id="close-cash-diff-val" class="text-sm">R$ 0,00</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Observações do Fechamento</label>
+                    <textarea id="close-cash-notes" rows="2" placeholder="Observações de encerramento do caixa..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-xs font-medium"></textarea>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 pt-2">
+                <button onclick="toggleCloseCashModal(false)" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition">Cancelar</button>
+                <button onclick="confirmCloseCash()" class="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/30 transition">Encerrar e Fechar Caixa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CASH CLOSED WARNING MODAL FOR POS -->
+    <div id="pos-closed-warning-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-100 text-center">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h3 class="font-extrabold text-xl text-slate-800">Caixa Fechado!</h3>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">Você precisa abrir o caixa do dia antes de registrar novas vendas na loja.</p>
+            </div>
+            <div class="pt-2 space-y-2">
+                <button onclick="closePosWarningModal(); openOpenCashModal();" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider shadow-md transition">
+                    <i class="fa-solid fa-door-open mr-1.5"></i> Abrir Caixa Agora
+                </button>
+                <button onclick="closePosWarningModal()" class="w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 font-bold text-xs hover:bg-slate-50 transition">
+                    Entendi, apenas visualizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINTABLE VOUCHER / RECEIPT MODAL FOR PAST CASH SESSIONS -->
+    <div id="printable-session-voucher" class="hidden bg-white p-8 max-w-md mx-auto">
+        <div class="text-center border-b pb-4 mb-4">
+            <h2 class="text-xl font-black uppercase tracking-tight text-slate-900">MIX AÇAÍTERIA</h2>
+            <p class="text-xs text-slate-500 uppercase font-bold">Comprovante de Fechamento de Caixa</p>
+        </div>
+        <div id="voucher-content" class="text-xs space-y-3"></div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+        <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+            <!-- Header Image Banner -->
+            <div class="relative h-44 bg-acai-950 flex items-center justify-center overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=800&q=80" alt="Login Banner" class="absolute inset-0 w-full h-full object-cover opacity-30">
+                <div class="absolute inset-0 bg-gradient-to-t from-acai-950 via-acai-950/60 to-transparent"></div>
+                <div class="relative z-10 text-center p-4">
+                    <div class="w-16 h-16 rounded-2xl mx-auto border-2 border-vibrant-pink overflow-hidden shadow-lg mb-2">
+                        <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover">
+                    </div>
+                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-purple-200 via-pink-200 to-white bg-clip-text text-transparent uppercase">
+                        MIX AÇAÍTERIA
+                    </h1>
+                    <p class="text-xs text-purple-300 font-medium">Acesso Restrito ao Sistema</p>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form onsubmit="handleLogin(event)" class="p-8 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Selecione ou Digite o Usuário</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-slate-400"></i>
+                        <input type="text" id="login-username" list="registered-users-list" required placeholder="Nome de Usuário..." class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-sm font-medium">
+                        <datalist id="registered-users-list"></datalist>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Senha</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-400"></i>
+                        <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-sm font-medium">
+                    </div>
+                </div>
+
+                <div id="login-error" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-exclamation text-sm"></i>
+                    <span id="login-error-msg">Usuário ou senha incorretos.</span>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-acai-700 via-acai-800 to-vibrant-pink text-white font-bold py-3.5 rounded-xl shadow-lg shadow-acai-900/30 hover:opacity-95 transition text-sm uppercase tracking-wider">
+                    Entrar no Sistema
+                </button>
+
+                <p class="text-center text-[11px] text-slate-400 mt-2">
+                    Acesso Padrão Inicial: <span class="font-bold text-slate-600">admin</span> / <span class="font-bold text-slate-600">1234</span>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-wrapper" class="flex w-full h-full">
+
+        <!-- SIDEBAR -->
+        <aside class="w-72 bg-gradient-to-b from-acai-950 via-acai-900 to-acai-950 text-white flex flex-col justify-between no-print shadow-2xl relative z-20">
+            <div>
+                <!-- LOGO HEADER -->
+                <div class="p-6 border-b border-acai-800/60 bg-acai-950/40 backdrop-blur-md flex items-center space-x-3">
+                    <div class="relative w-12 h-12 rounded-2xl overflow-hidden shadow-lg border-2 border-vibrant-pink/50 flex-shrink-0">
+                        <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=200&q=80" alt="Mix Açaíteria Logo" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-purple-200 via-pink-200 to-white bg-clip-text text-transparent uppercase">
+                            MIX AÇAÍTERIA
+                        </h1>
+                        <span class="text-[10px] font-semibold tracking-wider text-purple-300 uppercase bg-acai-800/80 px-2 py-0.5 rounded-full">Gestão & Caixa Pro</span>
+                    </div>
+                </div>
+
+                <!-- NAVIGATION -->
+                <nav class="p-4 space-y-1.5">
+                    <button onclick="switchTab('dashboard')" id="btn-dashboard" class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-acai-700 to-acai-800 text-white shadow-lg shadow-acai-900/50">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-chart-pie w-5 text-purple-300"></i>
+                            <span>Dashboard</span>
+                        </div>
+                    </button>
+
+                    <button onclick="switchTab('pos')" id="btn-pos" class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-300 hover:bg-acai-800/60 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-cash-register w-5 text-purple-300"></i>
+                            <span>Nova Venda (PDV)</span>
+                        </div>
+                    </button>
+
+                    <button onclick="switchTab('analytics')" id="btn-analytics" class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-300 hover:bg-acai-800/60 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-chart-line w-5 text-purple-300"></i>
+                            <span>Histórico & Gráficos</span>
+                        </div>
+                        <i id="lock-icon-analytics" class="fa-solid fa-lock text-xs text-amber-400 hidden"></i>
+                    </button>
+
+                    <button onclick="switchTab('reports')" id="btn-reports" class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-300 hover:bg-acai-800/60 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-file-pdf w-5 text-purple-300"></i>
+                            <span>Relatórios / PDF</span>
+                        </div>
+                        <i id="lock-icon-reports" class="fa-solid fa-lock text-xs text-amber-400 hidden"></i>
+                    </button>
+
+                    <button onclick="switchTab('employees')" id="btn-employees" class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-300 hover:bg-acai-800/60 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-users-gear w-5 text-purple-300"></i>
+                            <span>Funcionários</span>
+                        </div>
+                        <i id="lock-icon-employees" class="fa-solid fa-lock text-xs text-rose-400 hidden"></i>
+                    </button>
+
+                    <button onclick="switchTab('settings')" id="btn-settings" class="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 text-slate-300 hover:bg-acai-800/60 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-solid fa-sliders w-5 text-purple-300"></i>
+                            <span>Configurações</span>
+                        </div>
+                        <i id="lock-icon-settings" class="fa-solid fa-lock text-xs text-rose-400 hidden"></i>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- LOGOUT & USER BANNER -->
+            <div class="p-4 border-t border-acai-800/60 space-y-3">
+                <div class="p-3 rounded-2xl bg-acai-900/80 border border-purple-500/20 flex items-center justify-between">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <div class="w-9 h-9 rounded-xl bg-vibrant-pink/20 text-vibrant-pink flex items-center justify-center font-bold text-sm">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <div class="truncate">
+                            <p id="logged-user-name" class="text-xs font-bold text-purple-100 truncate">Vendedor</p>
+                            <span id="logged-user-badge" class="inline-block text-[10px] text-white bg-purple-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mt-0.5">Caixa</span>
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" title="Sair do Sistema" class="p-2 text-rose-300 hover:text-rose-100 hover:bg-rose-500/20 rounded-xl transition">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 flex flex-col h-screen overflow-y-auto bg-slate-100">
+            
+            <!-- HEADER -->
+            <header class="bg-white/80 backdrop-blur-md border-b border-slate-200/80 h-20 flex items-center justify-between px-8 no-print sticky top-0 z-10">
+                <div>
+                    <h2 id="page-title" class="text-2xl font-extrabold text-slate-800">Dashboard</h2>
+                    <p class="text-xs text-slate-400">Visão geral das vendas e operações do caixa</p>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- LIVE CASH REGISTER BADGE & BUTTONS -->
+                    <div id="cash-status-banner" class="flex items-center space-x-3 bg-slate-100 p-1.5 pl-3 rounded-2xl border border-slate-200">
+                        <div class="flex items-center space-x-2">
+                            <span id="cash-status-dot" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span id="cash-status-text" class="text-xs font-black uppercase tracking-wider text-emerald-700">Caixa Aberto</span>
+                        </div>
+                        <button id="cash-action-btn" onclick="toggleCashState()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm bg-rose-600 hover:bg-rose-700 text-white">
+                            Fechar Caixa
+                        </button>
+                    </div>
+
+                    <div class="h-8 w-px bg-slate-200"></div>
+
+                    <div class="text-right">
+                        <p id="current-date" class="text-xs font-medium text-slate-400"></p>
+                        <p class="text-sm font-bold text-acai-800 uppercase tracking-wide">MIX AÇAÍTERIA</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-acai-100 border border-acai-300 flex items-center justify-center text-acai-700 font-bold">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- MAIN CONTAINER -->
+            <div class="p-8 flex-1 max-w-7xl w-full mx-auto space-y-6">
+
+                <!-- ACCESS DENIED BANNER FOR RESTRICTED TABS -->
+                <div id="access-denied-view" class="hidden bg-white p-12 rounded-3xl border border-rose-200 shadow-xl text-center space-y-4 max-w-lg mx-auto my-12">
+                    <div class="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-inner">
+                        <i class="fa-solid fa-user-slash"></i>
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-800">Acesso Restrito</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">Seu perfil de usuário (<span id="denied-role-name" class="font-bold text-slate-700"></span>) não possui permissão para acessar este módulo. Contate um Administrador do sistema.</p>
+                    <button onclick="switchTab('pos')" class="inline-flex items-center space-x-2 bg-acai-700 hover:bg-acai-800 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-md">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>Voltar para Nova Venda (PDV)</span>
+                    </button>
+                </div>
+
+                <!-- TAB 1: DASHBOARD -->
+                <section id="tab-dashboard" class="space-y-6">
+                    <!-- HERO BANNER -->
+                    <div class="relative rounded-3xl overflow-hidden shadow-lg h-44 bg-slate-900 text-white flex items-center">
+                        <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=1200&q=80" alt="Açaí Banner" class="absolute inset-0 w-full h-full object-cover opacity-40">
+                        <div class="absolute inset-0 bg-gradient-to-r from-acai-950 via-acai-950/80 to-transparent"></div>
+                        <div class="relative z-10 p-8 flex justify-between items-center w-full">
+                            <div>
+                                <span class="bg-vibrant-pink/90 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow">Painel de Controle</span>
+                                <h2 class="text-3xl font-extrabold mt-2">Bem-vindo à <span class="text-vibrant-pink">MIX AÇAÍTERIA</span></h2>
+                                <p class="text-slate-300 text-sm mt-1 max-w-lg">Acompanhe seu faturamento em tempo real, status do caixa e vendas por peso.</p>
+                            </div>
+                            <div class="hidden sm:block text-right bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
+                                <span class="text-[11px] uppercase tracking-wider font-semibold text-purple-200">Turno do Caixa Atual</span>
+                                <p id="hero-cash-info" class="text-base font-extrabold text-white mt-0.5">Caixa Aberto por -</p>
+                                <p id="hero-cash-opened-at" class="text-xs text-purple-300"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARDS RESUMO FINANCEIRO -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                            <div class="w-14 h-14 rounded-2xl bg-purple-100 text-acai-700 flex items-center justify-center text-2xl font-bold">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vendas Totais Hoje</p>
+                                <h3 id="dash-total" class="text-2xl font-extrabold text-slate-800">R$ 0,00</h3>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                            <div class="w-14 h-14 rounded-2xl bg-pink-100 text-vibrant-pink flex items-center justify-center text-2xl font-bold">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Qtd. de Vendas Hoje</p>
+                                <h3 id="dash-count" class="text-2xl font-extrabold text-slate-800">0</h3>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                            <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl font-bold">
+                                <i class="fa-solid fa-weight-hanging"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Açaí Vendido</p>
+                                <h3 id="dash-total-weight" class="text-2xl font-extrabold text-slate-800">0,00 kg</h3>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
+                            <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-bold">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ticket Médio</p>
+                                <h3 id="dash-avg" class="text-2xl font-extrabold text-slate-800">R$ 0,00</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TOTALIZADOR POR FORMA DE PAGAMENTO -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center">
+                            <i class="fa-solid fa-pie-chart text-acai-600 mr-2"></i> Detalhamento do Turno Atual
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg">
+                                        <i class="fa-solid fa-coins"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 font-semibold uppercase">Fundo Troco</p>
+                                        <p id="dash-float-amount" class="text-lg font-extrabold text-slate-800">R$ 0,00</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg">
+                                        <i class="fa-solid fa-pix"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 font-semibold uppercase">Total Pix</p>
+                                        <p id="dash-total-pix" class="text-lg font-extrabold text-slate-800">R$ 0,00</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg">
+                                        <i class="fa-solid fa-credit-card"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 font-semibold uppercase">Total Cartão</p>
+                                        <p id="dash-total-card" class="text-lg font-extrabold text-slate-800">R$ 0,00</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+                                        <i class="fa-solid fa-money-bill-wave"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 font-semibold uppercase">Total Dinheiro</p>
+                                        <p id="dash-total-cash" class="text-lg font-extrabold text-slate-800">R$ 0,00</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RECENT SALES TABLE -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-800 text-base">Últimas Vendas Registradas</h3>
+                            <button onclick="switchTab('pos')" class="bg-gradient-to-r from-acai-700 to-vibrant-pink hover:opacity-90 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md">
+                                <i class="fa-solid fa-plus mr-1.5"></i> Lançar Venda
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                        <th class="py-3 px-4">Horário</th>
+                                        <th class="py-3 px-4">Cliente</th>
+                                        <th class="py-3 px-4">Vendedor</th>
+                                        <th class="py-3 px-4">Peso</th>
+                                        <th class="py-3 px-4">Adicionais</th>
+                                        <th class="py-3 px-4">Pagamento</th>
+                                        <th class="py-3 px-4 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-sales-table" class="text-sm divide-y divide-slate-100">
+                                    <!-- Preenchido via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 2: NOVA VENDA (PDV) -->
+                <section id="tab-pos" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
+                        <div class="flex items-center justify-between border-b pb-4">
+                            <h3 class="font-bold text-lg text-slate-800 flex items-center">
+                                <i class="fa-solid fa-bowl-rice text-acai-600 mr-2 text-xl"></i> Novo Açaí por Peso
+                            </h3>
+                            <span id="pos-cash-status-indicator" class="text-xs font-semibold px-3 py-1 rounded-full">
+                                <!-- Status atual -->
+                            </span>
+                        </div>
+
+                        <!-- CLIENT NAME -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Nome do Cliente (Opcional)</label>
+                            <input type="text" id="client-name" placeholder="Ex: Maria Souza" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-sm transition">
+                        </div>
+
+                        <!-- WEIGHT & PRICE -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Peso na Balança (Gramas)</label>
+                                <div class="relative">
+                                    <input type="number" id="weight-grams" placeholder="0" oninput="calculateTotal()" class="w-full px-4 py-3.5 pl-4 pr-20 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-xl font-bold text-slate-800">
+                                    <span class="absolute right-4 top-4 text-slate-400 font-semibold text-sm">gramas</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Preço do Quilo Configurado</label>
+                                <div class="px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xl flex items-center justify-between" id="display-kg-price">
+                                    R$ 0,00
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TOPPINGS -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-3">Selecione os Adicionais</label>
+                            <div id="toppings-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- PAYMENT METHODS -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-3">Forma de Pagamento</label>
+                            <div class="grid grid-cols-3 gap-3">
+                                <button type="button" onclick="setPaymentMethod('Pix')" id="pay-pix" class="py-3 px-4 rounded-xl border font-bold text-sm transition flex items-center justify-center space-x-2 border-acai-600 bg-acai-50 text-acai-700 shadow-sm">
+                                    <i class="fa-solid fa-pix"></i>
+                                    <span>Pix</span>
+                                </button>
+                                <button type="button" onclick="setPaymentMethod('Cartão')" id="pay-card" class="py-3 px-4 rounded-xl border font-bold text-sm transition flex items-center justify-center space-x-2 border-slate-200 text-slate-600 hover:bg-slate-50">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                    <span>Cartão</span>
+                                </button>
+                                <button type="button" onclick="setPaymentMethod('Dinheiro')" id="pay-cash" class="py-3 px-4 rounded-xl border font-bold text-sm transition flex items-center justify-center space-x-2 border-slate-200 text-slate-600 hover:bg-slate-50">
+                                    <i class="fa-solid fa-money-bill-wave"></i>
+                                    <span>Dinheiro</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ORDER SUMMARY CARD -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-fit space-y-6">
+                        <div>
+                            <div class="relative h-32 rounded-xl overflow-hidden mb-5">
+                                <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80" alt="Resumo Açaí" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-3">
+                                    <span class="text-white font-bold text-sm">Resumo da Compra</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between text-slate-600">
+                                    <span>Vendedor Atual:</span>
+                                    <span id="summary-seller-name" class="font-bold text-acai-800">-</span>
+                                </div>
+                                <div class="flex justify-between text-slate-600">
+                                    <span>Açaí (Peso):</span>
+                                    <span id="summary-acai-price" class="font-semibold text-slate-800">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between text-slate-600">
+                                    <span>Adicionais Extras:</span>
+                                    <span id="summary-toppings-price" class="font-semibold text-slate-800">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between text-slate-600">
+                                    <span>Pagamento Selecionado:</span>
+                                    <span id="summary-payment-method" class="font-bold text-acai-700">Pix</span>
+                                </div>
+                                <div class="border-t pt-4 flex justify-between text-xl font-extrabold text-acai-900">
+                                    <span>Total Final:</span>
+                                    <span id="summary-total" class="text-vibrant-pink">R$ 0,00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="pos-finalize-btn" onclick="finalizeSale()" class="w-full bg-gradient-to-r from-acai-700 via-acai-800 to-vibrant-pink hover:opacity-95 text-white font-bold py-4 rounded-xl shadow-lg shadow-acai-900/30 transition text-center uppercase tracking-wider text-sm flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-check-circle text-lg"></i>
+                            <span>Confirmar Venda</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- TAB 3: HISTÓRICO & ANÁLISE DE DESEMPENHO (GRÁFICOS) -->
+                <section id="tab-analytics" class="hidden space-y-6">
+                    <!-- PERIOD CONTROLS -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800">Análise Financeira & Histórico de Caixas</h3>
+                            <p class="text-xs text-slate-400">Consulte métricas de faturamento por período e fechamentos anteriores.</p>
+                        </div>
+
+                        <!-- PERIOD SELECTOR TABS -->
+                        <div class="flex items-center bg-slate-100 p-1.5 rounded-xl space-x-1">
+                            <button onclick="setAnalyticsPeriod('daily')" id="period-btn-daily" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-acai-900 shadow-sm">
+                                Diário
+                            </button>
+                            <button onclick="setAnalyticsPeriod('monthly')" id="period-btn-monthly" class="px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                                Mensal
+                            </button>
+                            <button onclick="setAnalyticsPeriod('yearly')" id="period-btn-yearly" class="px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900">
+                                Anual
+                            </button>
+                        </div>
+
+                        <!-- DATE INPUT FILTER -->
+                        <div id="analytics-date-picker-wrapper" class="flex items-center space-x-2">
+                            <input type="date" id="analytics-date-filter" onchange="renderAnalytics()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-acai-500">
+                        </div>
+                    </div>
+
+                    <!-- PERIOD CONSOLIDATED KPIS -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Faturamento do Período</p>
+                            <h3 id="ana-total-revenue" class="text-2xl font-black text-slate-800 mt-1">R$ 0,00</h3>
+                            <span class="text-[11px] text-emerald-600 font-bold flex items-center mt-1">
+                                <i class="fa-solid fa-arrow-up-right mr-1"></i> Vendas Confirmadas
+                            </span>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total em Quilos Vendidos</p>
+                            <h3 id="ana-total-weight" class="text-2xl font-black text-slate-800 mt-1">0,00 kg</h3>
+                            <span class="text-[11px] text-purple-600 font-bold flex items-center mt-1">
+                                <i class="fa-solid fa-weight-scale mr-1"></i> Volume de Açaí
+                            </span>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quantidade de Pedidos</p>
+                            <h3 id="ana-total-orders" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                            <span class="text-[11px] text-blue-600 font-bold flex items-center mt-1">
+                                <i class="fa-solid fa-users mr-1"></i> Clientes Atendidos
+                            </span>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Diferenças de Caixa (Quebra)</p>
+                            <h3 id="ana-total-diff" class="text-2xl font-black text-slate-800 mt-1">R$ 0,00</h3>
+                            <span class="text-[11px] text-amber-600 font-bold flex items-center mt-1">
+                                <i class="fa-solid fa-scale-unbalanced mr-1"></i> Divergência de Troco
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- CHARTS GRID -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- SALES TREND CHART -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-bold text-slate-800 text-sm">Evolução do Faturamento por Período</h4>
+                                <span class="text-[11px] text-slate-400">Valores em R$</span>
+                            </div>
+                            <div class="h-64 relative">
+                                <canvas id="chart-sales-trend"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- PAYMENT DISTRIBUTION DONUT CHART -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                            <h4 class="font-bold text-slate-800 text-sm">Distribuição por Forma de Pagamento</h4>
+                            <div class="h-64 relative flex items-center justify-center">
+                                <canvas id="chart-payment-methods"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SELLER RANKING CHART & CASH SESSIONS TABLE -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- SELLER PERFORMANCE CHART -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                            <h4 class="font-bold text-slate-800 text-sm">Desempenho por Vendedor / Funcionário</h4>
+                            <div class="h-64 relative">
+                                <canvas id="chart-sellers-performance"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- CASH SESSIONS LOG TABLE -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                            <div class="flex items-center justify-between border-b pb-3">
+                                <h4 class="font-bold text-slate-800 text-sm flex items-center">
+                                    <i class="fa-solid fa-vault text-acai-700 mr-2"></i> Histórico de Fechamentos de Caixa
+                                </h4>
+                                <span id="sessions-count-badge" class="text-xs bg-acai-100 text-acai-800 font-bold px-2.5 py-1 rounded-full">0 Sessões</span>
+                            </div>
+
+                            <div class="overflow-x-auto max-h-72 overflow-y-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wider sticky top-0 bg-white">
+                                            <th class="py-2.5 px-3">Data / Hora</th>
+                                            <th class="py-2.5 px-3">Operadores</th>
+                                            <th class="py-2.5 px-3">Fundo Inicial</th>
+                                            <th class="py-2.5 px-3">Faturamento</th>
+                                            <th class="py-2.5 px-3">Diferença</th>
+                                            <th class="py-2.5 px-3 text-right">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cash-sessions-table-body" class="text-xs divide-y divide-slate-100">
+                                        <!-- Preenchido via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 4: RELATÓRIOS / PDF -->
+                <section id="tab-reports" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800">Relatório Consolidado de Vendas</h3>
+                            <p class="text-xs text-slate-400">Gere o documento oficial de vendas para impressão ou salvamento em PDF.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 w-full sm:w-auto">
+                            <!-- Filter Seller -->
+                            <select id="report-seller-filter" onchange="renderReports()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                <option value="ALL">Todos os Vendedores</option>
+                            </select>
+
+                            <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-md flex items-center space-x-2 whitespace-nowrap">
+                                <i class="fa-solid fa-print"></i>
+                                <span>Imprimir / PDF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PRINTABLE PDF AREA -->
+                    <div id="printable-area" class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
+                        <div class="flex justify-between items-start border-b pb-6">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-16 h-16 rounded-2xl overflow-hidden border">
+                                    <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=200&q=80" alt="Logo PDF" class="w-full h-full object-cover">
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-black text-acai-950 uppercase tracking-tight">MIX AÇAÍTERIA</h2>
+                                    <p id="report-date-display" class="text-xs text-slate-500 mt-1 font-medium"></p>
+                                    <p class="text-[11px] text-slate-400">Relatório Geral de Vendas e Peso com Identificação de Vendedor</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-slate-400 uppercase font-bold tracking-wider">Faturamento Total</p>
+                                <h3 id="report-total-revenue" class="text-3xl font-black text-acai-800">R$ 0,00</h3>
+                            </div>
+                        </div>
+
+                        <!-- REPORT BREAKDOWN CARDS -->
+                        <div class="grid grid-cols-3 gap-4 border-b pb-6">
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <p class="text-[11px] text-slate-400 font-bold uppercase">Total em Pix</p>
+                                <p id="report-pix-total" class="text-base font-bold text-slate-800">R$ 0,00</p>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <p class="text-[11px] text-slate-400 font-bold uppercase">Total em Cartão</p>
+                                <p id="report-card-total" class="text-base font-bold text-slate-800">R$ 0,00</p>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl">
+                                <p class="text-[11px] text-slate-400 font-bold uppercase">Total em Dinheiro</p>
+                                <p id="report-cash-total" class="text-base font-bold text-slate-800">R$ 0,00</p>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                        <th class="py-3 px-3">Data / Hora</th>
+                                        <th class="py-3 px-3">Cliente</th>
+                                        <th class="py-3 px-3">Vendedor</th>
+                                        <th class="py-3 px-3">Peso (g)</th>
+                                        <th class="py-3 px-3">Adicionais Escolhidos</th>
+                                        <th class="py-3 px-3">Forma Pagamento</th>
+                                        <th class="py-3 px-3 text-right">Valor Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="full-report-table" class="text-sm divide-y divide-slate-100">
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 5: GERENCIAMENTO DE FUNCIONÁRIOS -->
+                <section id="tab-employees" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Add Employee Form -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                            <h3 class="font-bold text-lg text-slate-800 border-b pb-3 flex items-center">
+                                <i class="fa-solid fa-user-plus text-acai-600 mr-2"></i> Cadastrar Funcionário
+                            </h3>
+                            <form onsubmit="handleAddEmployee(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nome Completo</label>
+                                    <input type="text" id="emp-fullname" required placeholder="Ex: João da Silva" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Usuário de Login</label>
+                                    <input type="text" id="emp-username" required placeholder="Ex: joao" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Senha de Acesso</label>
+                                    <input type="password" id="emp-password" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cargo / Função</label>
+                                    <select id="emp-role" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                        <option value="Vendedor">Vendedor / Operador de Caixa</option>
+                                        <option value="Atendente">Atendente</option>
+                                        <option value="Gerente">Gerente</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="w-full bg-acai-700 hover:bg-acai-800 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition">
+                                    Salvar Funcionário
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Employees List Table -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                            <h3 class="font-bold text-lg text-slate-800 border-b pb-3 flex items-center justify-between">
+                                <span><i class="fa-solid fa-address-book text-acai-600 mr-2"></i> Quadro de Funcionários</span>
+                                <span id="emp-count-badge" class="text-xs bg-acai-100 text-acai-800 font-bold px-3 py-1 rounded-full">0 Cadastrados</span>
+                            </h3>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                            <th class="py-3 px-4">Nome</th>
+                                            <th class="py-3 px-4">Usuário</th>
+                                            <th class="py-3 px-4">Cargo</th>
+                                            <th class="py-3 px-4 text-right">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="employees-table-body" class="text-sm divide-y divide-slate-100">
+                                        <!-- Preenchido via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 6: CONFIGURAÇÕES -->
+                <section id="tab-settings" class="hidden space-y-6 max-w-3xl">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
+                        <div class="flex items-center justify-between border-b pb-4">
+                            <h3 class="font-bold text-lg text-slate-800">Configurações Gerais - MIX AÇAÍTERIA</h3>
+                            <span id="settings-auth-badge" class="text-xs bg-amber-100 text-amber-800 border border-amber-300 font-bold px-3 py-1 rounded-full flex items-center space-x-1">
+                                <i class="fa-solid fa-lock text-[10px]"></i>
+                                <span>Requer Alt. Autorizada ADM</span>
+                            </span>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Preço do Açaí por Quilo (R$)</label>
+                            <div class="flex space-x-3">
+                                <input type="number" id="setting-kg-price" step="0.01" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-acai-500 focus:outline-none text-sm font-bold">
+                                <button onclick="attemptSaveKgPrice()" class="bg-acai-700 hover:bg-acai-800 text-white px-6 py-3 rounded-xl text-sm font-bold transition shadow-md flex items-center space-x-2">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                    <span>Salvar Preço</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">Este valor é utilizado para o cálculo automático do valor do açaí baseado no peso inserido na balança.</p>
+                        </div>
+
+                        <div class="border-t pt-6">
+                            <h4 class="font-bold text-sm text-slate-800 mb-3">Gerenciar Adicionais</h4>
+                            <div class="flex space-x-3 mb-4">
+                                <input type="text" id="new-topping-name" placeholder="Ex: Nutella" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                <input type="number" id="new-topping-price" step="0.01" placeholder="Preço Extra (R$)" class="w-40 px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-acai-500">
+                                <button onclick="attemptAddTopping()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl text-sm font-bold transition shadow-md flex items-center space-x-1">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Adicionar</span>
+                                </button>
+                            </div>
+                            <div id="toppings-list-admin" class="space-y-2">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT SYSTEM LOGIC -->
+    <script>
+        // Initial Admin User Template
+        const initialEmployees = [
+            { id: 101, name: 'Administrador Pro', username: 'admin', password: '1234', role: 'Administrador' }
+        ];
+
+        // System State Variables
+        let currentTab = 'dashboard';
+        let selectedPayment = 'Pix';
+        let analyticsPeriod = 'daily'; // 'daily', 'monthly', 'yearly'
+        let currentUser = JSON.parse(localStorage.getItem('mix_acai_current_user')) || null;
+        
+        let employees = JSON.parse(localStorage.getItem('mix_acai_users')) || initialEmployees;
+        let kgPrice = parseFloat(localStorage.getItem('mix_acai_kg_price')) || 48.00;
+        let toppings = JSON.parse(localStorage.getItem('mix_acai_toppings')) || [
+            { id: 1, name: 'Leite Condensado', price: 0.00 },
+            { id: 2, name: 'Leite em Pó', price: 0.00 },
+            { id: 3, name: 'Paçoca', price: 0.00 },
+            { id: 4, name: 'Morango Fresco', price: 3.50 },
+            { id: 5, name: 'Nutella Original', price: 4.50 },
+            { id: 6, name: 'Granola Crocante', price: 0.00 }
+        ];
+        let sales = JSON.parse(localStorage.getItem('mix_acai_sales')) || [];
+        let cashSessions = JSON.parse(localStorage.getItem('mix_acai_cash_sessions')) || [];
+        let activeCashSession = JSON.parse(localStorage.getItem('mix_acai_active_cash_session')) || null;
+
+        // Chart Instance Handles
+        let chartSalesTrendInstance = null;
+        let chartPaymentMethodsInstance = null;
+        let chartSellersPerformanceInstance = null;
+
+        // Save employees state explicitly to 'mix_acai_users'
+        function saveEmployeesToStorage() {
+            localStorage.setItem('mix_acai_users', JSON.stringify(employees));
+        }
+
+        // Notification Helper
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const isSuccess = type === 'success';
+            const isInfo = type === 'info';
+            toast.className = `pointer-events-auto flex items-center space-x-3 px-4 py-3 rounded-xl shadow-xl text-xs font-bold text-white transition-all transform translate-y-2 opacity-0 duration-300 ${
+                isSuccess ? 'bg-emerald-600' : isInfo ? 'bg-amber-600' : 'bg-rose-600'
+            }`;
+            
+            toast.innerHTML = `
+                <i class="fa-solid ${isSuccess ? 'fa-circle-check' : isInfo ? 'fa-circle-info' : 'fa-circle-xmark'} text-base"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Custom Modal Confirmation
+        let modalResolver = null;
+        function confirmAction(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-msg').innerText = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+
+            return new Promise((resolve) => {
+                modalResolver = resolve;
+            });
+        }
+
+        function closeModal(result) {
+            document.getElementById('custom-modal').classList.add('hidden');
+            if (modalResolver) {
+                modalResolver(result);
+                modalResolver = null;
+            }
+        }
+
+        // Admin Auth Authorization Modal
+        let adminAuthResolver = null;
+        function requestAdminAuth(actionTitle = 'Autorização do Administrador', actionDesc = 'Digite a senha de um Administrador para autorizar esta alteração.') {
+            if (currentUser && currentUser.role === 'Administrador') {
+                return Promise.resolve(true);
+            }
+
+            document.getElementById('auth-modal-title').innerText = actionTitle;
+            document.getElementById('auth-modal-desc').innerText = actionDesc;
+            document.getElementById('auth-admin-password').value = '';
+            document.getElementById('auth-modal-error').classList.add('hidden');
+            document.getElementById('admin-auth-modal').classList.remove('hidden');
+
+            return new Promise((resolve) => {
+                adminAuthResolver = resolve;
+            });
+        }
+
+        function closeAdminAuthModal(result) {
+            document.getElementById('admin-auth-modal').classList.add('hidden');
+            if (adminAuthResolver) {
+                adminAuthResolver(result);
+                adminAuthResolver = null;
+            }
+        }
+
+        function submitAdminAuth() {
+            const pwd = document.getElementById('auth-admin-password').value.trim();
+            const adminUser = employees.find(e => e.role === 'Administrador' && e.password === pwd);
+
+            if (adminUser) {
+                closeAdminAuthModal(true);
+            } else {
+                document.getElementById('auth-modal-error').classList.remove('hidden');
+            }
+        }
+
+        // CASH REGISTER MANAGEMENT (OPEN / CLOSE / STATUS)
+        function updateCashStatusUI() {
+            const dot = document.getElementById('cash-status-dot');
+            const statusText = document.getElementById('cash-status-text');
+            const actionBtn = document.getElementById('cash-action-btn');
+            const posIndicator = document.getElementById('pos-cash-status-indicator');
+            const heroCashInfo = document.getElementById('hero-cash-info');
+            const heroOpenedAt = document.getElementById('hero-cash-opened-at');
+            const posBtn = document.getElementById('pos-finalize-btn');
+
+            if (activeCashSession && activeCashSession.status === 'OPEN') {
+                dot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
+                statusText.innerText = "Caixa Aberto";
+                statusText.className = "text-xs font-black uppercase tracking-wider text-emerald-700";
+                actionBtn.innerText = "Fechar Caixa";
+                actionBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm bg-rose-600 hover:bg-rose-700 text-white";
+
+                posIndicator.innerText = "CAIXA ABERTO";
+                posIndicator.className = "text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full";
+
+                heroCashInfo.innerText = `Aberto por: ${activeCashSession.openedBy}`;
+                heroOpenedAt.innerText = `Fundo de Troco: R$ ${activeCashSession.initialFloat.toFixed(2)} às ${activeCashSession.openedAtTime}`;
+
+                if (posBtn) {
+                    posBtn.disabled = false;
+                    posBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                dot.className = "w-3 h-3 rounded-full bg-rose-500";
+                statusText.innerText = "Caixa Fechado";
+                statusText.className = "text-xs font-black uppercase tracking-wider text-rose-700";
+                actionBtn.innerText = "Abrir Caixa";
+                actionBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white";
+
+                posIndicator.innerText = "CAIXA FECHADO";
+                posIndicator.className = "text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full";
+
+                heroCashInfo.innerText = "Nenhum caixa aberto no momento";
+                heroOpenedAt.innerText = "Clique em 'Abrir Caixa' para registrar vendas";
+
+                if (posBtn) {
+                    posBtn.disabled = true;
+                    posBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        function toggleCashState() {
+            if (activeCashSession && activeCashSession.status === 'OPEN') {
+                openCloseCashModal();
+            } else {
+                openOpenCashModal();
+            }
+        }
+
+        function openOpenCashModal() {
+            if (!currentUser) return;
+            document.getElementById('open-cash-user-name').innerText = currentUser.name;
+            document.getElementById('open-cash-datetime').innerText = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+            document.getElementById('open-cash-modal').classList.remove('hidden');
+        }
+
+        function toggleOpenCashModal(show) {
+            if (show) document.getElementById('open-cash-modal').classList.remove('hidden');
+            else document.getElementById('open-cash-modal').classList.add('hidden');
+        }
+
+        function confirmOpenCash() {
+            const initialFloat = parseFloat(document.getElementById('open-cash-initial-amount').value) || 0;
+            const notes = document.getElementById('open-cash-notes').value.trim();
+
+            const now = new Date();
+            activeCashSession = {
+                id: Date.now(),
+                openedBy: currentUser.name,
+                openedById: currentUser.id,
+                openedAtDate: now.toLocaleDateString('pt-BR'),
+                openedAtTime: now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}),
+                initialFloat: initialFloat,
+                notesOpen: notes,
+                status: 'OPEN'
+            };
+
+            localStorage.setItem('mix_acai_active_cash_session', JSON.stringify(activeCashSession));
+            toggleOpenCashModal(false);
+            updateCashStatusUI();
+            updateDashboard();
+            showToast('Caixa aberto com sucesso!');
+        }
+
+        function openCloseCashModal() {
+            if (!activeCashSession || activeCashSession.status !== 'OPEN') return;
+
+            // Compute current session sales
+            const currentSales = sales.filter(s => s.sessionId === activeCashSession.id);
+            const salesCash = currentSales.filter(s => s.payment === 'Dinheiro').reduce((acc, s) => acc + s.total, 0);
+            const salesPix = currentSales.filter(s => s.payment === 'Pix').reduce((acc, s) => acc + s.total, 0);
+            const salesCard = currentSales.filter(s => s.payment === 'Cartão').reduce((acc, s) => acc + s.total, 0);
+            const totalSales = salesCash + salesPix + salesCard;
+            const expectedDrawer = activeCashSession.initialFloat + salesCash;
+
+            document.getElementById('close-cash-opened-by').innerText = activeCashSession.openedBy;
+            document.getElementById('close-cash-closed-by').innerText = currentUser.name;
+            document.getElementById('close-cash-initial').innerText = `R$ ${activeCashSession.initialFloat.toFixed(2)}`;
+            document.getElementById('close-cash-sales-cash').innerText = `+ R$ ${salesCash.toFixed(2)}`;
+            document.getElementById('close-cash-sales-pix').innerText = `+ R$ ${salesPix.toFixed(2)}`;
+            document.getElementById('close-cash-sales-card').innerText = `+ R$ ${salesCard.toFixed(2)}`;
+            document.getElementById('close-cash-total-sales').innerText = `R$ ${totalSales.toFixed(2)}`;
+            document.getElementById('close-cash-expected-drawer').innerText = `R$ ${expectedDrawer.toFixed(2)}`;
+
+            document.getElementById('close-cash-counted-cash').value = expectedDrawer.toFixed(2);
+            calculateCashDifference();
+
+            document.getElementById('close-cash-modal').classList.remove('hidden');
+        }
+
+        function toggleCloseCashModal(show) {
+            if (show) document.getElementById('close-cash-modal').classList.remove('hidden');
+            else document.getElementById('close-cash-modal').classList.add('hidden');
+        }
+
+        function calculateCashDifference() {
+            if (!activeCashSession) return;
+            const currentSales = sales.filter(s => s.sessionId === activeCashSession.id);
+            const salesCash = currentSales.filter(s => s.payment === 'Dinheiro').reduce((acc, s) => acc + s.total, 0);
+            const expectedDrawer = activeCashSession.initialFloat + salesCash;
+
+            const counted = parseFloat(document.getElementById('close-cash-counted-cash').value) || 0;
+            const diff = counted - expectedDrawer;
+
+            const diffBanner = document.getElementById('close-cash-diff-banner');
+            const diffLabel = document.getElementById('close-cash-diff-label');
+            const diffVal = document.getElementById('close-cash-diff-val');
+
+            diffBanner.classList.remove('hidden');
+            if (diff === 0) {
+                diffBanner.className = "p-3 rounded-xl text-xs font-bold flex items-center justify-between border bg-emerald-50 border-emerald-200 text-emerald-800";
+                diffLabel.innerText = "Caixa Exato (Sem divergências)";
+                diffVal.innerText = "R$ 0,00";
+            } else if (diff > 0) {
+                diffBanner.className = "p-3 rounded-xl text-xs font-bold flex items-center justify-between border bg-blue-50 border-blue-200 text-blue-800";
+                diffLabel.innerText = "Sobra de Caixa:";
+                diffVal.innerText = `+ R$ ${diff.toFixed(2)}`;
+            } else {
+                diffBanner.className = "p-3 rounded-xl text-xs font-bold flex items-center justify-between border bg-rose-50 border-rose-200 text-rose-800";
+                diffLabel.innerText = "Falta / Quebra de Caixa:";
+                diffVal.innerText = `- R$ ${Math.abs(diff).toFixed(2)}`;
+            }
+        }
+
+        function confirmCloseCash() {
+            if (!activeCashSession) return;
+
+            const now = new Date();
+            const currentSales = sales.filter(s => s.sessionId === activeCashSession.id);
+            const salesCash = currentSales.filter(s => s.payment === 'Dinheiro').reduce((acc, s) => acc + s.total, 0);
+            const salesPix = currentSales.filter(s => s.payment === 'Pix').reduce((acc, s) => acc + s.total, 0);
+            const salesCard = currentSales.filter(s => s.payment === 'Cartão').reduce((acc, s) => acc + s.total, 0);
+            const totalSales = salesCash + salesPix + salesCard;
+            const expectedDrawer = activeCashSession.initialFloat + salesCash;
+
+            const countedCash = parseFloat(document.getElementById('close-cash-counted-cash').value) || 0;
+            const difference = countedCash - expectedDrawer;
+            const notesClose = document.getElementById('close-cash-notes').value.trim();
+
+            const closedSession = {
+                ...activeCashSession,
+                closedBy: currentUser.name,
+                closedById: currentUser.id,
+                closedAtDate: now.toLocaleDateString('pt-BR'),
+                closedAtTime: now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}),
+                salesCash,
+                salesPix,
+                salesCard,
+                totalSales,
+                expectedDrawer,
+                countedCash,
+                difference,
+                notesClose,
+                status: 'CLOSED'
+            };
+
+            cashSessions.unshift(closedSession);
+            localStorage.setItem('mix_acai_cash_sessions', JSON.stringify(cashSessions));
+
+            activeCashSession = null;
+            localStorage.removeItem('mix_acai_active_cash_session');
+
+            toggleCloseCashModal(false);
+            updateCashStatusUI();
+            updateDashboard();
+            renderAnalytics();
+            showToast('Caixa encerrado e relatório salvo com sucesso!');
+        }
+
+        function closePosWarningModal() {
+            document.getElementById('pos-closed-warning-modal').classList.add('hidden');
+        }
+
+        // ROLE PERMISSIONS
+        function updateUIPermissions() {
+            if (!currentUser) return;
+
+            const role = currentUser.role || 'Vendedor';
+            
+            const roleBadge = document.getElementById('logged-user-badge');
+            roleBadge.innerText = role;
+            if (role === 'Administrador') {
+                roleBadge.className = 'inline-block text-[10px] text-white bg-rose-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mt-0.5';
+            } else if (role === 'Gerente') {
+                roleBadge.className = 'inline-block text-[10px] text-white bg-purple-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mt-0.5';
+            } else {
+                roleBadge.className = 'inline-block text-[10px] text-white bg-slate-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mt-0.5';
+            }
+
+            const lockEmp = document.getElementById('lock-icon-employees');
+            const lockSet = document.getElementById('lock-icon-settings');
+
+            if (role === 'Vendedor' || role === 'Operador de Caixa') {
+                lockEmp.classList.remove('hidden');
+                lockSet.classList.remove('hidden');
+            } else if (role === 'Gerente') {
+                lockEmp.classList.add('hidden');
+                lockSet.classList.remove('hidden');
+            } else {
+                lockEmp.classList.add('hidden');
+                lockSet.classList.add('hidden');
+            }
+        }
+
+        // INITIALIZATION
+        document.addEventListener('DOMContentLoaded', () => {
+            saveEmployeesToStorage();
+            updateUserDatalist();
+            checkAuth();
+            updateDateHeader();
+            document.getElementById('setting-kg-price').value = kgPrice.toFixed(2);
+            document.getElementById('analytics-date-filter').valueAsDate = new Date();
+            
+            renderToppingsPOS();
+            renderToppingsAdmin();
+            renderEmployees();
+            updateCashStatusUI();
+            updateDashboard();
+            renderReports();
+            setPaymentMethod('Pix');
+        });
+
+        function updateUserDatalist() {
+            const datalist = document.getElementById('registered-users-list');
+            datalist.innerHTML = '';
+            employees.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.username;
+                opt.label = `${emp.name} (${emp.role})`;
+                datalist.appendChild(opt);
+            });
+        }
+
+        function checkAuth() {
+            const loginScreen = document.getElementById('login-screen');
+            const appWrapper = document.getElementById('app-wrapper');
+
+            if (!currentUser) {
+                loginScreen.classList.remove('hidden');
+                appWrapper.classList.add('hidden');
+            } else {
+                loginScreen.classList.add('hidden');
+                appWrapper.classList.remove('hidden');
+                document.getElementById('logged-user-name').innerText = currentUser.name;
+                document.getElementById('summary-seller-name').innerText = currentUser.name;
+                updateUIPermissions();
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const userInput = document.getElementById('login-username').value.trim();
+            const passInput = document.getElementById('login-password').value.trim();
+            const errorBox = document.getElementById('login-error');
+
+            employees = JSON.parse(localStorage.getItem('mix_acai_users')) || initialEmployees;
+
+            const foundUser = employees.find(
+                emp => emp.username.toLowerCase() === userInput.toLowerCase() && emp.password === passInput
+            );
+
+            if (foundUser) {
+                currentUser = foundUser;
+                localStorage.setItem('mix_acai_current_user', JSON.stringify(currentUser));
+                errorBox.classList.add('hidden');
+                document.getElementById('login-username').value = '';
+                document.getElementById('login-password').value = '';
+                checkAuth();
+                
+                if (currentUser.role === 'Vendedor' || currentUser.role === 'Operador de Caixa') {
+                    switchTab('pos');
+                } else {
+                    switchTab('dashboard');
+                }
+
+                showToast(`Bem-vindo(a), ${currentUser.name}!`);
+            } else {
+                errorBox.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            localStorage.removeItem('mix_acai_current_user');
+            checkAuth();
+            showToast('Sessão encerrada com sucesso.', 'info');
+        }
+
+        function updateDateHeader() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const todayStr = new Date().toLocaleDateString('pt-BR', options);
+            document.getElementById('current-date').innerText = todayStr;
+            document.getElementById('report-date-display').innerText = `Data de Emissão: ${todayStr}`;
+            document.getElementById('display-kg-price').innerText = `R$ ${kgPrice.toFixed(2)}`;
+        }
+
+        function switchTab(tabId) {
+            const role = currentUser ? (currentUser.role || 'Vendedor') : 'Vendedor';
+            const accessDeniedView = document.getElementById('access-denied-view');
+
+            if ((tabId === 'employees' || tabId === 'settings') && (role === 'Vendedor' || role === 'Operador de Caixa')) {
+                hideAllTabs();
+                accessDeniedView.classList.remove('hidden');
+                document.getElementById('denied-role-name').innerText = role;
+                document.getElementById('page-title').innerText = 'Acesso Restrito';
+                return;
+            }
+
+            if (tabId === 'pos' && (!activeCashSession || activeCashSession.status !== 'OPEN')) {
+                document.getElementById('pos-closed-warning-modal').classList.remove('hidden');
+            }
+
+            accessDeniedView.classList.add('hidden');
+
+            const tabs = ['dashboard', 'pos', 'analytics', 'reports', 'employees', 'settings'];
+            tabs.forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).classList.remove('bg-gradient-to-r', 'from-acai-700', 'to-acai-800', 'text-white', 'shadow-lg');
+                document.getElementById(`btn-${t}`).classList.add('text-slate-300');
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`btn-${tabId}`).classList.add('bg-gradient-to-r', 'from-acai-700', 'to-acai-800', 'text-white', 'shadow-lg');
+            document.getElementById(`btn-${tabId}`).classList.remove('text-slate-300');
+
+            const titles = {
+                dashboard: 'Dashboard',
+                pos: 'Frente de Caixa (PDV)',
+                analytics: 'Histórico & Análise de Desempenho',
+                reports: 'Relatórios e Exportação PDF',
+                employees: 'Gerenciamento de Funcionários',
+                settings: 'Configurações do Sistema'
+            };
+            document.getElementById('page-title').innerText = titles[tabId];
+            currentTab = tabId;
+
+            if(tabId === 'dashboard') updateDashboard();
+            if(tabId === 'analytics') renderAnalytics();
+            if(tabId === 'reports') renderReports();
+            if(tabId === 'employees') renderEmployees();
+        }
+
+        function hideAllTabs() {
+            ['dashboard', 'pos', 'analytics', 'reports', 'employees', 'settings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+            });
+        }
+
+        function renderToppingsPOS() {
+            const container = document.getElementById('toppings-container');
+            container.innerHTML = '';
+            toppings.forEach(t => {
+                container.innerHTML += `
+                    <label class="flex items-center space-x-3 p-3 rounded-xl border border-slate-200/80 hover:bg-acai-50/50 cursor-pointer transition bg-slate-50/30">
+                        <input type="checkbox" value="${t.id}" data-price="${t.price}" onchange="calculateTotal()" class="topping-checkbox w-4 h-4 text-acai-600 rounded focus:ring-acai-500">
+                        <div class="text-xs">
+                            <p class="font-bold text-slate-700">${t.name}</p>
+                            <p class="text-slate-400">${t.price > 0 ? `+ R$ ${t.price.toFixed(2)}` : 'Incluso'}</p>
+                        </div>
+                    </label>
+                `;
+            });
+        }
+
+        function setPaymentMethod(method) {
+            selectedPayment = method;
+            document.getElementById('summary-payment-method').innerText = method;
+
+            const btnMap = { 'Pix': 'pay-pix', 'Cartão': 'pay-card', 'Dinheiro': 'pay-cash' };
+
+            Object.keys(btnMap).forEach(key => {
+                const btn = document.getElementById(btnMap[key]);
+                if (key === method) {
+                    btn.className = "py-3 px-4 rounded-xl border font-bold text-sm transition flex items-center justify-center space-x-2 border-acai-600 bg-acai-50 text-acai-700 shadow-sm";
+                } else {
+                    btn.className = "py-3 px-4 rounded-xl border font-bold text-sm transition flex items-center justify-center space-x-2 border-slate-200 text-slate-600 hover:bg-slate-50";
+                }
+            });
+        }
+
+        function calculateTotal() {
+            const grams = parseFloat(document.getElementById('weight-grams').value) || 0;
+            const acaiPrice = (grams / 1000) * kgPrice;
+
+            let toppingsPrice = 0;
+            document.querySelectorAll('.topping-checkbox:checked').forEach(chk => {
+                toppingsPrice += parseFloat(chk.getAttribute('data-price'));
+            });
+
+            const total = acaiPrice + toppingsPrice;
+
+            document.getElementById('summary-acai-price').innerText = `R$ ${acaiPrice.toFixed(2)}`;
+            document.getElementById('summary-toppings-price').innerText = `R$ ${toppingsPrice.toFixed(2)}`;
+            document.getElementById('summary-total').innerText = `R$ ${total.toFixed(2)}`;
+
+            return { acaiPrice, toppingsPrice, total, grams };
+        }
+
+        function finalizeSale() {
+            if (!activeCashSession || activeCashSession.status !== 'OPEN') {
+                showToast('O caixa está fechado! Abra o caixa antes de lançar vendas.', 'error');
+                document.getElementById('pos-closed-warning-modal').classList.remove('hidden');
+                return;
+            }
+
+            const { acaiPrice, toppingsPrice, total, grams } = calculateTotal();
+            if(grams <= 0) {
+                showToast('Por favor, informe o peso na balança.', 'error');
+                return;
+            }
+
+            const clientName = document.getElementById('client-name').value.trim() || 'Cliente Balcão';
+            
+            const selectedToppings = [];
+            document.querySelectorAll('.topping-checkbox:checked').forEach(chk => {
+                const id = chk.value;
+                const toppingObj = toppings.find(t => t.id == id);
+                if(toppingObj) selectedToppings.push(toppingObj.name);
+            });
+
+            const now = new Date();
+            const newSale = {
+                id: Date.now(),
+                sessionId: activeCashSession.id,
+                time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                date: now.toLocaleDateString('pt-BR'),
+                isoDate: now.toISOString().split('T')[0],
+                monthYear: `${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()}`,
+                year: now.getFullYear().toString(),
+                client: clientName,
+                seller: currentUser ? currentUser.name : 'Vendedor Desconhecido',
+                sellerId: currentUser ? currentUser.id : null,
+                grams: grams,
+                toppings: selectedToppings.length > 0 ? selectedToppings.join(', ') : 'Nenhum adicional',
+                payment: selectedPayment,
+                total: total
+            };
+
+            sales.unshift(newSale);
+            localStorage.setItem('mix_acai_sales', JSON.stringify(sales));
+
+            document.getElementById('weight-grams').value = '';
+            document.getElementById('client-name').value = '';
+            document.querySelectorAll('.topping-checkbox').forEach(chk => chk.checked = false);
+            calculateTotal();
+
+            showToast('Venda registrada com sucesso!');
+            switchTab('dashboard');
+        }
+
+        function updateDashboard() {
+            const today = new Date().toLocaleDateString('pt-BR');
+            let todaySales = sales.filter(s => s.date === today);
+
+            if (activeCashSession && activeCashSession.status === 'OPEN') {
+                todaySales = sales.filter(s => s.sessionId === activeCashSession.id);
+            }
+
+            const isSellerOnly = currentUser && (currentUser.role === 'Vendedor' || currentUser.role === 'Operador de Caixa');
+            if (isSellerOnly) {
+                todaySales = todaySales.filter(s => s.seller === currentUser.name || s.sellerId === currentUser.id);
+            }
+
+            const totalRevenue = todaySales.reduce((acc, curr) => acc + curr.total, 0);
+            const totalGrams = todaySales.reduce((acc, curr) => acc + curr.grams, 0);
+            const count = todaySales.length;
+            const avg = count > 0 ? totalRevenue / count : 0;
+
+            const totalPix = todaySales.filter(s => s.payment === 'Pix').reduce((acc, curr) => acc + curr.total, 0);
+            const totalCard = todaySales.filter(s => s.payment === 'Cartão').reduce((acc, curr) => acc + curr.total, 0);
+            const totalCash = todaySales.filter(s => s.payment === 'Dinheiro').reduce((acc, curr) => acc + curr.total, 0);
+
+            document.getElementById('dash-total').innerText = `R$ ${totalRevenue.toFixed(2)}`;
+            document.getElementById('dash-count').innerText = count;
+            document.getElementById('dash-total-weight').innerText = `${(totalGrams / 1000).toFixed(2)} kg`;
+            document.getElementById('dash-avg').innerText = `R$ ${avg.toFixed(2)}`;
+
+            document.getElementById('dash-float-amount').innerText = `R$ ${(activeCashSession ? activeCashSession.initialFloat : 0).toFixed(2)}`;
+            document.getElementById('dash-total-pix').innerText = `R$ ${totalPix.toFixed(2)}`;
+            document.getElementById('dash-total-card').innerText = `R$ ${totalCard.toFixed(2)}`;
+            document.getElementById('dash-total-cash').innerText = `R$ ${totalCash.toFixed(2)}`;
+
+            const table = document.getElementById('recent-sales-table');
+            table.innerHTML = '';
+
+            if(todaySales.length === 0) {
+                table.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-medium text-xs">${isSellerOnly ? 'Você ainda não registrou vendas neste turno.' : 'Nenhuma venda registrada neste turno.'}</td></tr>`;
+                return;
+            }
+
+            todaySales.slice(0, 7).forEach(s => {
+                table.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3.5 px-4 font-medium text-slate-600">${s.time}</td>
+                        <td class="py-3.5 px-4 font-bold text-slate-800">${s.client}</td>
+                        <td class="py-3.5 px-4 text-xs font-semibold text-acai-800"><i class="fa-solid fa-user-tag text-purple-400 mr-1"></i>${s.seller || 'N/A'}</td>
+                        <td class="py-3.5 px-4 text-slate-600 font-semibold">${s.grams}g</td>
+                        <td class="py-3.5 px-4 text-slate-500 text-xs">${s.toppings}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${
+                                s.payment === 'Pix' ? 'bg-emerald-100 text-emerald-800' : 
+                                s.payment === 'Cartão' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                            }">
+                                ${s.payment}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-extrabold text-slate-800">R$ ${s.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // ANALYTICS & CHARTS (DAILY, MONTHLY, YEARLY)
+        function setAnalyticsPeriod(period) {
+            analyticsPeriod = period;
+
+            ['daily', 'monthly', 'yearly'].forEach(p => {
+                const btn = document.getElementById(`period-btn-${p}`);
+                if (p === period) {
+                    btn.className = "px-4 py-2 rounded-lg text-xs font-bold transition bg-white text-acai-900 shadow-sm";
+                } else {
+                    btn.className = "px-4 py-2 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900";
+                }
+            });
+
+            renderAnalytics();
+        }
+
+        function renderAnalytics() {
+            const pickerVal = document.getElementById('analytics-date-filter').value;
+            const refDate = pickerVal ? new Date(pickerVal + 'T00:00:00') : new Date();
+
+            let filteredSales = [];
+            let filteredSessions = [];
+
+            if (analyticsPeriod === 'daily') {
+                const targetDateStr = refDate.toLocaleDateString('pt-BR');
+                filteredSales = sales.filter(s => s.date === targetDateStr);
+                filteredSessions = cashSessions.filter(cs => cs.closedAtDate === targetDateStr || cs.openedAtDate === targetDateStr);
+            } else if (analyticsPeriod === 'monthly') {
+                const targetMonthYear = `${(refDate.getMonth()+1).toString().padStart(2, '0')}/${refDate.getFullYear()}`;
+                filteredSales = sales.filter(s => s.monthYear === targetMonthYear || s.date.endsWith(targetMonthYear));
+                filteredSessions = cashSessions.filter(cs => cs.closedAtDate && cs.closedAtDate.includes(targetMonthYear));
+            } else if (analyticsPeriod === 'yearly') {
+                const targetYear = refDate.getFullYear().toString();
+                filteredSales = sales.filter(s => s.year === targetYear || s.date.endsWith(targetYear));
+                filteredSessions = cashSessions.filter(cs => cs.closedAtDate && cs.closedAtDate.endsWith(targetYear));
+            }
+
+            // KPIs
+            const totalRev = filteredSales.reduce((acc, s) => acc + s.total, 0);
+            const totalGrams = filteredSales.reduce((acc, s) => acc + s.grams, 0);
+            const totalOrders = filteredSales.length;
+            const totalDiff = filteredSessions.reduce((acc, cs) => acc + (cs.difference || 0), 0);
+
+            document.getElementById('ana-total-revenue').innerText = `R$ ${totalRev.toFixed(2)}`;
+            document.getElementById('ana-total-weight').innerText = `${(totalGrams / 1000).toFixed(2)} kg`;
+            document.getElementById('ana-total-orders').innerText = totalOrders;
+            document.getElementById('ana-total-diff').innerText = `R$ ${totalDiff.toFixed(2)}`;
+
+            // Render Charts
+            renderSalesTrendChart(filteredSales);
+            renderPaymentMethodsChart(filteredSales);
+            renderSellersPerformanceChart(filteredSales);
+            renderCashSessionsLog(filteredSessions);
+        }
+
+        function renderSalesTrendChart(filteredSales) {
+            const ctx = document.getElementById('chart-sales-trend').getContext('2d');
+            if (chartSalesTrendInstance) chartSalesTrendInstance.destroy();
+
+            let labels = [];
+            let dataPoints = [];
+
+            if (analyticsPeriod === 'daily') {
+                labels = ['08h', '10h', '12h', '14h', '16h', '18h', '20h', '22h'];
+                dataPoints = labels.map(label => {
+                    const hour = parseInt(label);
+                    return filteredSales.filter(s => {
+                        const sHour = parseInt(s.time.split(':')[0]);
+                        return sHour >= hour && sHour < hour + 2;
+                    }).reduce((acc, s) => acc + s.total, 0);
+                });
+            } else if (analyticsPeriod === 'monthly') {
+                labels = Array.from({length: 30}, (_, i) => `Dia ${i + 1}`);
+                dataPoints = labels.map((_, i) => {
+                    const dayNum = i + 1;
+                    return filteredSales.filter(s => {
+                        const day = parseInt(s.date.split('/')[0]);
+                        return day === dayNum;
+                    }).reduce((acc, s) => acc + s.total, 0);
+                });
+            } else {
+                labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                dataPoints = labels.map((_, i) => {
+                    const monthNum = i + 1;
+                    return filteredSales.filter(s => {
+                        const m = parseInt(s.date.split('/')[1]);
+                        return m === monthNum;
+                    }).reduce((acc, s) => acc + s.total, 0);
+                });
+            }
+
+            chartSalesTrendInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Faturamento (R$)',
+                        data: dataPoints,
+                        borderColor: '#9333ea',
+                        backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderPaymentMethodsChart(filteredSales) {
+            const ctx = document.getElementById('chart-payment-methods').getContext('2d');
+            if (chartPaymentMethodsInstance) chartPaymentMethodsInstance.destroy();
+
+            const pixTotal = filteredSales.filter(s => s.payment === 'Pix').reduce((acc, s) => acc + s.total, 0);
+            const cardTotal = filteredSales.filter(s => s.payment === 'Cartão').reduce((acc, s) => acc + s.total, 0);
+            const cashTotal = filteredSales.filter(s => s.payment === 'Dinheiro').reduce((acc, s) => acc + s.total, 0);
+
+            chartPaymentMethodsInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pix', 'Cartão', 'Dinheiro'],
+                    datasets: [{
+                        data: [pixTotal, cardTotal, cashTotal],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function renderSellersPerformanceChart(filteredSales) {
+            const ctx = document.getElementById('chart-sellers-performance').getContext('2d');
+            if (chartSellersPerformanceInstance) chartSellersPerformanceInstance.destroy();
+
+            const sellerTotals = {};
+            filteredSales.forEach(s => {
+                const name = s.seller || 'Outros';
+                sellerTotals[name] = (sellerTotals[name] || 0) + s.total;
+            });
+
+            const labels = Object.keys(sellerTotals);
+            const dataPoints = Object.values(sellerTotals);
+
+            chartSellersPerformanceInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length > 0 ? labels : ['Sem Vendas'],
+                    datasets: [{
+                        label: 'Vendas por Vendedor (R$)',
+                        data: dataPoints.length > 0 ? dataPoints : [0],
+                        backgroundColor: '#ec4899',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderCashSessionsLog(sessions) {
+            const tableBody = document.getElementById('cash-sessions-table-body');
+            document.getElementById('sessions-count-badge').innerText = `${sessions.length} Sessões`;
+            tableBody.innerHTML = '';
+
+            if (sessions.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 font-medium">Nenhum fechamento de caixa registrado para o período.</td></tr>`;
+                return;
+            }
+
+            sessions.forEach(cs => {
+                const diff = cs.difference || 0;
+                const diffColor = diff === 0 ? 'text-emerald-600' : diff > 0 ? 'text-blue-600' : 'text-rose-600';
+
+                tableBody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2.5 px-3 font-semibold text-slate-700">${cs.closedAtDate} (${cs.closedAtTime})</td>
+                        <td class="py-2.5 px-3">
+                            <span class="block font-bold text-slate-800">${cs.openedBy}</span>
+                            <span class="text-[10px] text-slate-400">Enc: ${cs.closedBy}</span>
+                        </td>
+                        <td class="py-2.5 px-3 font-bold text-slate-600">R$ ${(cs.initialFloat || 0).toFixed(2)}</td>
+                        <td class="py-2.5 px-3 font-black text-acai-800">R$ ${(cs.totalSales || 0).toFixed(2)}</td>
+                        <td class="py-2.5 px-3 font-bold ${diffColor}">R$ ${diff.toFixed(2)}</td>
+                        <td class="py-2.5 px-3 text-right">
+                            <button onclick="printSessionVoucher(${cs.id})" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Imprimir Comprovante">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function printSessionVoucher(sessionId) {
+            const session = cashSessions.find(cs => cs.id === sessionId);
+            if (!session) return;
+
+            const voucher = document.getElementById('voucher-content');
+            voucher.innerHTML = `
+                <div class="space-y-2 border-b pb-3">
+                    <p><strong>Abertura:</strong> ${session.openedAtDate} às ${session.openedAtTime}</p>
+                    <p><strong>Operador Abertura:</strong> ${session.openedBy}</p>
+                    <p><strong>Fechamento:</strong> ${session.closedAtDate} às ${session.closedAtTime}</p>
+                    <p><strong>Operador Fechamento:</strong> ${session.closedBy}</p>
+                </div>
+                <div class="space-y-1 py-2 border-b">
+                    <p class="flex justify-between"><span>Fundo Troco Inicial:</span> <span>R$ ${session.initialFloat.toFixed(2)}</span></p>
+                    <p class="flex justify-between"><span>Vendas Dinheiro:</span> <span>R$ ${(session.salesCash || 0).toFixed(2)}</span></p>
+                    <p class="flex justify-between"><span>Vendas Pix:</span> <span>R$ ${(session.salesPix || 0).toFixed(2)}</span></p>
+                    <p class="flex justify-between"><span>Vendas Cartão:</span> <span>R$ ${(session.salesCard || 0).toFixed(2)}</span></p>
+                    <p class="flex justify-between font-bold text-sm pt-1 border-t"><span>Faturamento Total:</span> <span>R$ ${(session.totalSales || 0).toFixed(2)}</span></p>
+                </div>
+                <div class="space-y-1 pt-2">
+                    <p class="flex justify-between"><span>Gaveta Esperada:</span> <span>R$ ${(session.expectedDrawer || 0).toFixed(2)}</span></p>
+                    <p class="flex justify-between"><span>Dinheiro Contado:</span> <span>R$ ${(session.countedCash || 0).toFixed(2)}</span></p>
+                    <p class="flex justify-between font-bold text-sm ${session.difference < 0 ? 'text-rose-600' : 'text-emerald-600'}">
+                        <span>Quebra/Diferença:</span> <span>R$ ${(session.difference || 0).toFixed(2)}</span>
+                    </p>
+                </div>
+                ${session.notesClose ? `<p class="mt-3 text-[10px] text-slate-500 italic border-t pt-2">Obs: ${session.notesClose}</p>` : ''}
+            `;
+
+            window.print();
+        }
+
+        // REPORTS TAB
+        function renderReports() {
+            const today = new Date().toLocaleDateString('pt-BR');
+            let todaySales = sales.filter(s => s.date === today);
+
+            const filterSelect = document.getElementById('report-seller-filter');
+            const selectedSeller = filterSelect.value;
+            filterSelect.innerHTML = '<option value="ALL">Todos os Vendedores</option>';
+            
+            const sellerList = [...new Set(todaySales.map(s => s.seller))];
+            sellerList.forEach(sName => {
+                if(sName) {
+                    const opt = document.createElement('option');
+                    opt.value = sName;
+                    opt.innerText = sName;
+                    filterSelect.appendChild(opt);
+                }
+            });
+            filterSelect.value = selectedSeller;
+
+            if (selectedSeller && selectedSeller !== 'ALL') {
+                todaySales = todaySales.filter(s => s.seller === selectedSeller);
+            }
+
+            const totalRevenue = todaySales.reduce((acc, curr) => acc + curr.total, 0);
+            const totalPix = todaySales.filter(s => s.payment === 'Pix').reduce((acc, curr) => acc + curr.total, 0);
+            const totalCard = todaySales.filter(s => s.payment === 'Cartão').reduce((acc, curr) => acc + curr.total, 0);
+            const totalCash = todaySales.filter(s => s.payment === 'Dinheiro').reduce((acc, curr) => acc + curr.total, 0);
+
+            document.getElementById('report-total-revenue').innerText = `R$ ${totalRevenue.toFixed(2)}`;
+            document.getElementById('report-pix-total').innerText = `R$ ${totalPix.toFixed(2)}`;
+            document.getElementById('report-card-total').innerText = `R$ ${totalCard.toFixed(2)}`;
+            document.getElementById('report-cash-total').innerText = `R$ ${totalCash.toFixed(2)}`;
+
+            const table = document.getElementById('full-report-table');
+            table.innerHTML = '';
+
+            if(todaySales.length === 0) {
+                table.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-medium text-xs">Nenhuma venda encontrada para o filtro selecionado.</td></tr>`;
+                return;
+            }
+
+            todaySales.forEach(s => {
+                table.innerHTML += `
+                    <tr class="border-b border-slate-100">
+                        <td class="py-3 px-3 font-medium text-slate-600">${s.date} ${s.time}</td>
+                        <td class="py-3 px-3 font-bold text-slate-800">${s.client}</td>
+                        <td class="py-3 px-3 font-bold text-acai-800 text-xs">${s.seller || 'N/A'}</td>
+                        <td class="py-3 px-3 text-slate-600 font-semibold">${s.grams}g</td>
+                        <td class="py-3 px-3 text-slate-500 text-xs">${s.toppings}</td>
+                        <td class="py-3 px-3 font-bold text-slate-700">${s.payment}</td>
+                        <td class="py-3 px-3 text-right font-black text-slate-800">R$ ${s.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // EMPLOYEE MANAGEMENT
+        function renderEmployees() {
+            const tableBody = document.getElementById('employees-table-body');
+            document.getElementById('emp-count-badge').innerText = `${employees.length} Cadastrados`;
+            tableBody.innerHTML = '';
+
+            employees.forEach(emp => {
+                tableBody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3.5 px-4 font-bold text-slate-800">${emp.name}</td>
+                        <td class="py-3.5 px-4 text-slate-600 font-medium">@${emp.username}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${
+                                emp.role === 'Administrador' ? 'bg-rose-100 text-rose-800' : emp.role === 'Gerente' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-800'
+                            }">
+                                ${emp.role}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            ${
+                                emp.username === 'admin' 
+                                ? '<span class="text-xs text-slate-400 italic">Padrão</span>' 
+                                : `<button onclick="removeEmployee(${emp.id})" class="text-rose-500 hover:text-rose-700 font-bold text-xs"><i class="fa-solid fa-trash mr-1"></i>Remover</button>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function handleAddEmployee(e) {
+            e.preventDefault();
+            
+            const authorized = await requestAdminAuth('Cadastrar Funcionário', 'É necessária autorização de Administrador para cadastrar novos usuários.');
+            if (!authorized) return;
+
+            const fullname = document.getElementById('emp-fullname').value.trim();
+            const username = document.getElementById('emp-username').value.trim();
+            const password = document.getElementById('emp-password').value.trim();
+            const role = document.getElementById('emp-role').value;
+
+            if (employees.some(emp => emp.username.toLowerCase() === username.toLowerCase())) {
+                showToast('Este nome de usuário já está cadastrado.', 'error');
+                return;
+            }
+
+            const newEmployee = { id: Date.now(), name: fullname, username, password, role };
+
+            employees.push(newEmployee);
+            saveEmployeesToStorage();
+            updateUserDatalist();
+
+            document.getElementById('emp-fullname').value = '';
+            document.getElementById('emp-username').value = '';
+            document.getElementById('emp-password').value = '';
+
+            renderEmployees();
+            showToast('Funcionário cadastrado e pronto para login!');
+        }
+
+        async function removeEmployee(id) {
+            const authorized = await requestAdminAuth('Remover Funcionário', 'Informe a senha de Administrador para confirmar a exclusão deste funcionário.');
+            if(!authorized) return;
+
+            const confirmed = await confirmAction('Remover Funcionário', 'Tem certeza que deseja remover este funcionário?');
+            if(!confirmed) return;
+
+            employees = employees.filter(emp => emp.id !== id);
+            saveEmployeesToStorage();
+            updateUserDatalist();
+            renderEmployees();
+            showToast('Funcionário removido com sucesso!');
+        }
+
+        // SETTINGS
+        async function attemptSaveKgPrice() {
+            const authorized = await requestAdminAuth('Alterar Preço por Kg', 'A alteração do preço do quilo exige autorização por senha de Administrador.');
+            if (!authorized) return;
+
+            const newPrice = parseFloat(document.getElementById('setting-kg-price').value);
+            if(isNaN(newPrice) || newPrice <= 0) {
+                showToast('Por favor, insira um preço válido.', 'error');
+                return;
+            }
+            kgPrice = newPrice;
+            localStorage.setItem('mix_acai_kg_price', kgPrice);
+            updateDateHeader();
+            showToast('Preço do quilo atualizado com sucesso!');
+        }
+
+        function renderToppingsAdmin() {
+            const list = document.getElementById('toppings-list-admin');
+            list.innerHTML = '';
+            toppings.forEach(t => {
+                list.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+                        <span class="font-bold text-slate-700">${t.name} <span class="text-xs text-slate-400 font-normal">(${t.price > 0 ? `+ R$ ${t.price.toFixed(2)}` : 'Incluso'})</span></span>
+                        <button onclick="attemptRemoveTopping(${t.id})" class="text-rose-500 hover:text-rose-700 text-xs font-bold"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    </div>
+                `;
+            });
+        }
+
+        async function attemptAddTopping() {
+            const authorized = await requestAdminAuth('Adicionar Novo Adicional', 'Confirme a senha de Administrador para incluir novos adicionais.');
+            if (!authorized) return;
+
+            const name = document.getElementById('new-topping-name').value.trim();
+            const price = parseFloat(document.getElementById('new-topping-price').value) || 0;
+
+            if(!name) {
+                showToast('Informe o nome do adicional.', 'error');
+                return;
+            }
+
+            const newT = { id: Date.now(), name, price };
+            toppings.push(newT);
+            localStorage.setItem('mix_acai_toppings', JSON.stringify(toppings));
+
+            document.getElementById('new-topping-name').value = '';
+            document.getElementById('new-topping-price').value = '';
+
+            renderToppingsPOS();
+            renderToppingsAdmin();
+            showToast('Adicional adicionado!');
+        }
+
+        async function attemptRemoveTopping(id) {
+            const authorized = await requestAdminAuth('Excluir Adicional', 'Confirme a senha de Administrador para remover adicionais.');
+            if (!authorized) return;
+
+            toppings = toppings.filter(t => t.id !== id);
+            localStorage.setItem('mix_acai_toppings', JSON.stringify(toppings));
+            renderToppingsPOS();
+            renderToppingsAdmin();
+            showToast('Adicional removido!');
+        }
+    </script>
+</body>
+</html>
